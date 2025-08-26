@@ -8,8 +8,6 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <!-- OCR -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
   <!-- Header -->
@@ -28,20 +26,13 @@
       <form id="scheduleForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="text-sm font-medium">Nama Pasien</label>
-          <div class="flex gap-2">
-            <input id="name" required class="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="Nama pasien">
-            <button type="button" id="cameraBtn" class="px-3 py-2 bg-purple-600 text-white rounded shadow hover:bg-purple-700">📷</button>
-          </div>
-          <video id="camera" autoplay playsinline class="hidden w-full mt-2 rounded-lg border"></video>
-          <canvas id="snapshot" class="hidden"></canvas>
+          <input id="name" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="Nama pasien">
         </div>
-
         <div>
           <label class="text-sm font-medium">Nomor WA</label>
           <input id="wa" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" placeholder="089812345678">
           <p class="text-xs text-gray-500 mt-1">Nomor otomatis diubah ke format 62xxxx</p>
         </div>
-
         <div>
           <label class="text-sm font-medium">Tanggal Pemeriksaan</label>
           <input id="date" type="date" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
@@ -112,7 +103,16 @@
   };
 
   // --- Firebase Init
-  const firebaseConfig = { /* ... pakai config anda ... */ };
+  const firebaseConfig = {
+    apiKey: "AIzaSyAOQU9cdRAMKgH5HTrh315MYDxMfwtwSFA",
+    authDomain: "jadwal-pemeriksaan-usg.firebaseapp.com",
+    databaseURL: "https://jadwal-pemeriksaan-usg-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "jadwal-pemeriksaan-usg",
+    storageBucket: "jadwal-pemeriksaan-usg.appspot.com",
+    messagingSenderId: "371750207952",
+    appId: "1:371750207952:web:eff324c4a8de05efa039d5",
+    measurementId: "G-JP73FB02HM"
+  };
   const app = firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
@@ -124,54 +124,20 @@
   const scheduleList = document.getElementById("scheduleList");
   const viewDate = document.getElementById("viewDate");
   const saveSendBtn = document.getElementById("saveSendBtn");
-  const nameInput = document.getElementById("name");
 
   // set default today
   const today = new Date().toISOString().split("T")[0];
   document.getElementById("date").value = today;
   viewDate.value = today;
   prep.value = preparations[procedure.value];
-  procedure.addEventListener("change", () => prep.value = preparations[procedure.value]);
 
-  // === CAMERA & OCR ===
-  const cameraBtn = document.getElementById("cameraBtn");
-  const video = document.getElementById("camera");
-  const canvas = document.getElementById("snapshot");
-  let stream = null;
-
-  cameraBtn.addEventListener("click", async () => {
-    if (!stream) {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      video.classList.remove("hidden");
-
-      // ambil snapshot setelah 3 detik
-      setTimeout(async () => {
-        const ctx = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL("image/png");
-
-        // OCR pakai Tesseract
-        const { data: { text } } = await Tesseract.recognize(dataUrl, 'ind');
-        if (text.trim()) {
-          nameInput.value = text.trim().split("\n")[0]; // ambil baris pertama
-          messageBox.textContent = "📷 Nama pasien berhasil terdeteksi dari label.";
-          messageBox.className = "mt-3 text-sm text-green-600";
-        }
-
-        // matikan kamera
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-        video.classList.add("hidden");
-      }, 3000);
-    }
+  procedure.addEventListener("change", () => {
+    prep.value = preparations[procedure.value];
   });
 
-  // === Save schedule (tidak saya ubah selain WA message) ===
+  // --- Save schedule function
   async function saveSchedule(sendWA = false) {
-    const name = nameInput.value.trim();
+    const name = document.getElementById("name").value.trim();
     const wa = document.getElementById("wa").value.trim();
     const date = document.getElementById("date").value;
     const time = document.getElementById("time").value;
@@ -183,9 +149,11 @@
       return;
     }
 
+    // Normalize WA
     let waNorm = wa.replace(/[^0-9]/g,"");
     if (waNorm.startsWith("0")) waNorm = "62" + waNorm.slice(1);
 
+    // Check conflict
     const snap = await db.ref(`schedules/${date}`).get();
     if (snap.exists()) {
       const day = snap.val();
@@ -197,6 +165,7 @@
       }
     }
 
+    // Save
     const newRef = db.ref(`schedules/${date}`).push();
     await newRef.set({ name, wa, waNorm, procedure: proc, time });
 
@@ -206,6 +175,7 @@
     document.getElementById("date").value = date;
     prep.value = preparations[proc];
 
+    // Kirim WA
     if (sendWA) {
       const waMsg = `Salam Sehat,%0AHaloo ${name} untuk pemeriksaan ${proc.replaceAll("_"," ").toUpperCase()} di Instalasi Radiologi RS Mitra Plumbon akan dilaksanakan pada ${date} pukul ${time}.%0A%0ADengan Persiapan Sebagai Berikut :%0A%0A${encodeURIComponent(preparations[proc])}%0A%0AMohon hadir tepat waktu.%0ATerima Kasih 🙏`;
       const waLink = `https://wa.me/${waNorm}?text=${waMsg}`;
@@ -213,10 +183,14 @@
     }
   }
 
-  form.addEventListener("submit", (e) => { e.preventDefault(); saveSchedule(false); });
-  saveSendBtn.addEventListener("click", () => saveSchedule(true));
+  // --- Event handlers
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveSchedule(false); // hanya simpan
+  });
+  saveSendBtn.addEventListener("click", () => saveSchedule(true)); // simpan + kirim
 
-  // load jadwal harian
+  // --- Load schedule per date
   function loadSchedule(d) {
     db.ref(`schedules/${d}`).on("value", (snap) => {
       scheduleList.innerHTML = "";
