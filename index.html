@@ -177,7 +177,8 @@
 
     // Kirim WA
     if (sendWA) {
-      const waLink = `https://wa.me/${waNorm}?text=Halo%20${name},%20jadwal%20${date}%20${time}%20untuk%20${proc}.%0A${encodeURIComponent(preparations[proc])}`;
+      const waMsg = `Salam Sehat,%0AHaloo ${name} untuk pemeriksaan ${proc.replaceAll("_"," ").toUpperCase()} di Instalasi Radiologi RS Mitra Plumbon akan dilaksanakan pada ${date} pukul ${time}.%0A%0ADengan Persiapan Sebagai Berikut :%0A%0A${encodeURIComponent(preparations[proc])}%0A%0AMohon hadir tepat waktu.%0ATerima Kasih 🙏`;
+      const waLink = `https://wa.me/${waNorm}?text=${waMsg}`;
       window.open(waLink, "_blank");
     }
   }
@@ -207,7 +208,7 @@
           <div class="text-sm text-gray-600">${s.procedure.replaceAll("_"," ").toUpperCase()}</div>
           <div class="mt-1 font-bold text-blue-700">${s.time}</div>
           <a target="_blank" class="mt-2 inline-block text-green-600 text-sm underline" 
-            href="https://wa.me/${s.waNorm}?text=Halo%20${s.name},%20jadwal%20${d}%20${s.time}%20untuk%20${s.procedure}.%0A${encodeURIComponent(preparations[s.procedure])}">
+            href="https://wa.me/${s.waNorm}?text=Salam%20Sehat,%0AHaloo%20${s.name}%20untuk%20pemeriksaan%20${s.procedure.replaceAll("_"," ").toUpperCase()}%20di%20Instalasi%20Radiologi%20RS%20Mitra%20Plumbon%20akan%20dilaksanakan%20pada%20${d}%20pukul%20${s.time}.%0A%0ADengan%20Persiapan%20Sebagai%20Berikut%20:%0A%0A${encodeURIComponent(preparations[s.procedure])}%0A%0AMohon%20hadir%20tepat%20waktu.%0ATerima%20Kasih%20🙏">
             Kirim WA
           </a>
         `;
